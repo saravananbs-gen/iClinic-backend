@@ -8,12 +8,13 @@ from src.data.clients.redis import redis_client
 from src.core.services.twilio_service import twilio_service
 from src.core.services.agent_service import voice_agent
 from src.constants.url import BASE_URL
+from src.schemas.auth import CurrentUserSchema
 
 
 load_dotenv()
 
 
-async def initiate_call(to_number: str, user_id: str):
+async def initiate_call(to_number: str, user: CurrentUserSchema):
     call = twilio_service.make_call(
         to_number=to_number, callback_url=f"{BASE_URL}/voice/voice"
     )
@@ -21,8 +22,10 @@ async def initiate_call(to_number: str, user_id: str):
         call.sid,
         json.dumps(
             {
-                "user_id": user_id,
-                "user_phone": to_number,
+                "user_id": user.user_id,
+                "user_phone": user.user_phone,
+                "user_email": user.user_email,
+                "to_phone": to_number,
             }
         ),
         ex=3600,
@@ -79,12 +82,16 @@ async def handle_speech(request: Request):
     user_data = json.loads(user_data_raw)
     user_id = user_data["user_id"]
     user_phone = user_data["user_phone"]
+    user_email = user_data["user_email"]
+    to_phone = user_data["to_phone"]
 
     ai_text_reply = await voice_agent.generate_response(
         call_sid=call_sid,
         user_input=speech_result,
         user_id=user_id,
         user_phone=user_phone,
+        user_email=user_email,
+        to_phone=to_phone,
     )
 
     response.say(

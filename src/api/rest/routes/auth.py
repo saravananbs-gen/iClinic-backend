@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import OAuth2PasswordRequestForm
 
 from src.config.settings import settings
 from src.constants.auth import REFRESH_COOKIE_PATH
@@ -9,6 +10,36 @@ from src.schemas.auth import LoginRequest, SignupRequest, TokenResponse
 from src.utils.auth import _require_refresh_cookie, _set_refresh_cookie
 
 router = APIRouter(tags=["Auth"])
+
+
+@router.post("/login/oauth")
+async def login_oauth(
+    request: Request,
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    This endpoint is ONLY for Swagger OAuth2 compatibility.
+    """
+    payload = LoginRequest(
+        email=form_data.username,
+        password=form_data.password,
+    )
+
+    access_token, refresh_token = await auth_service.login(
+        session,
+        payload,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    _set_refresh_cookie(response, refresh_token)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/signup", response_model=TokenResponse)

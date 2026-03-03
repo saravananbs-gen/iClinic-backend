@@ -13,6 +13,8 @@ class VoiceAgent:
         user_input: str,
         user_id: str,
         user_phone: str,
+        user_email: str,
+        to_phone: str,
     ) -> str:
 
         result = await self.agent.ainvoke(
@@ -24,6 +26,8 @@ class VoiceAgent:
                     "thread_id": call_sid,
                     "user_id": user_id,
                     "user_phone": user_phone,
+                    "user_email": user_email,
+                    "to_phone": to_phone,
                 }
             },
         )
