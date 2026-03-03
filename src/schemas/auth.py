@@ -22,3 +22,12 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class CurrentUserSchema(BaseModel):
+    user_id: str
+    user_phone: str
+    user_email: EmailStr
+
+    class Config:
+        from_attributes = True
