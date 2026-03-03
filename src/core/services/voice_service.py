@@ -1,6 +1,6 @@
 from fastapi import Request
 from fastapi.responses import Response
-from twilio.twiml.voice_response import Gather, VoiceResponse
+from twilio.twiml.voice_response import Gather, VoiceResponse, Dial
 import json
 from dotenv import load_dotenv
 
@@ -94,23 +94,31 @@ async def handle_speech(request: Request):
         to_phone=to_phone,
     )
 
-    response.say(
-        ai_text_reply,
-        voice="Polly.Joanna",
-        language="en-US",
-    )
+    if ai_text_reply.lower() == "<TRANSFER_TO_HUMAN>".lower():
+        response.say(
+            "One moment, transferring you to a human assistant for immediate help."
+        )
+        dial = Dial()
+        dial.number("+919629035281")
+        response.append(dial)
+    else:
+        response.say(
+            ai_text_reply,
+            voice="Polly.Joanna",
+            language="en-US",
+        )
 
-    gather = Gather(
-        input="speech",
-        action="/voice/handle-speech",
-        method="POST",
-        timeout=5,
-        speech_timeout="auto",
-        speech_model="phone_call",
-    )
-    response.append(gather)
+        gather = Gather(
+            input="speech",
+            action="/voice/handle-speech",
+            method="POST",
+            timeout=5,
+            speech_timeout="auto",
+            speech_model="phone_call",
+        )
+        response.append(gather)
 
-    response.say("Thank you and have a great day!")
-    response.hangup()
+        response.say("Thank you and have a great day!")
+        response.hangup()
 
     return Response(content=str(response), media_type="application/xml")
