@@ -9,7 +9,7 @@ from src.data.models.postgres.AvailabilitySlot import AvailabilitySlot
 from src.data.models.postgres.AppointmentType import AppointmentType
 from src.data.clients.postgres import AsyncSessionLocal
 from src.utils.generate_uuidv7 import uuid7_str
-from src.core.services.notification import send_notification
+from src.core.services.notification import send_appointment_notification
 
 
 @tool
@@ -113,11 +113,32 @@ async def create_appointment(
             if not slot:
                 return "Selected slot not found."
 
+            if slot.is_booked:
+                return "This slot is already booked."
+
             slot.is_booked = True
 
             await session.commit()
 
-            await send_notification(provider_id, appointment)
+            provider_result = await session.execute(
+                select(Provider).where(Provider.id == provider_id)
+            )
+            provider = provider_result.scalar_one()
+
+            slot_time = f"{slot.start_time} - {slot.end_time}"
+
+            try:
+                await send_appointment_notification(
+                    action="booked",
+                    patient_email=config["configurable"]["user_email"],
+                    patient_phone=config["configurable"]["user_phone"],
+                    provider_name=f"{provider.first_name} {provider.last_name}",
+                    specialization=provider.specialization,
+                    slot_time=slot_time,
+                    appointment_type=normalized_name,
+                )
+            except Exception as e:
+                print(f"Notification failed: {e}")
 
             return "Appointment successfully confirmed."
 
@@ -234,6 +255,27 @@ async def cancel_appointment_by_id(appointment_id: str, config: RunnableConfig) 
                 slot.is_booked = False
 
             await session.commit()
+
+            provider_result = await session.execute(
+                select(Provider).where(Provider.id == appointment.provider_id)
+            )
+            provider = provider_result.scalar_one()
+
+            slot_time = f"{slot.start_time} - {slot.end_time}"
+
+            try:
+                await send_appointment_notification(
+                    action="cancelled",
+                    patient_email=config["configurable"]["user_email"],
+                    patient_phone=config["configurable"]["user_phone"],
+                    provider_name=f"{provider.first_name} {provider.last_name}",
+                    specialization=provider.specialization,
+                    slot_time=slot_time,
+                    appointment_type="Appointment",
+                )
+            except Exception as e:
+                print(f"Notification failed: {e}")
+
             return "Success: The appointment has been cancelled and the slot is now available."
 
     except Exception as e:

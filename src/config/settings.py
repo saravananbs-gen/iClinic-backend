@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     REFRESH_COOKIE_NAME: str
     REFRESH_COOKIE_SAMESITE: str
     REFRESH_COOKIE_SECURE: bool
+    SMTP_SERVER: str
+    SMTP_PORT: int
+    SMTP_EMAIL: str
+    SMTP_APP_PASSWORD: str
 
     class Config:
         env_file = ".env"
