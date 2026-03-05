@@ -9,7 +9,9 @@ from src.core.services.twilio_service import twilio_service
 from src.core.services.agent_service import voice_agent
 from src.constants.url import BASE_URL
 from src.schemas.auth import CurrentUserSchema
+from src.observability.logging import get_logger
 
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -29,6 +31,10 @@ async def initiate_call(to_number: str, user: CurrentUserSchema):
             }
         ),
         ex=3600,
+    )
+    logger.info(
+        "Voice call initiated",
+        extra={"extra_data": {"call_sid": call.sid, "to_number": to_number}},
     )
     return {"status": "Call initiated", "call_sid": call.sid}
 
