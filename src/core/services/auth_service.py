@@ -15,6 +15,9 @@ from src.utils.auth import (
     _verify_password,
     _decode_refresh_token,
 )
+from src.observability.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 async def signup(
@@ -68,6 +71,10 @@ async def signup(
     )
 
     await session.commit()
+    logger.info(
+        "User signed up",
+        extra={"extra_data": {"user_id": str(user.id), "email": payload.email}},
+    )
     return access_token, refresh_token
 
 
@@ -109,6 +116,10 @@ async def login(
     )
 
     await session.commit()
+    logger.info(
+        "User logged in",
+        extra={"extra_data": {"user_id": str(user.id)}},
+    )
     return access_token, refresh_token
 
 

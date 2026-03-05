@@ -10,6 +10,9 @@ from src.data.models.postgres.AppointmentType import AppointmentType
 from src.data.clients.postgres import AsyncSessionLocal
 from src.utils.generate_uuidv7 import uuid7_str
 from src.core.services.notification import send_appointment_notification
+from src.observability.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @tool
@@ -137,8 +140,12 @@ async def create_appointment(
                     slot_time=slot_time,
                     appointment_type=normalized_name,
                 )
-            except Exception as e:
-                print(f"Notification failed: {e}")
+            except Exception:
+                logger.error(
+                    "Booking notification failed",
+                    exc_info=True,
+                    extra={"extra_data": {"appointment_id": str(appointment.id)}},
+                )
 
             return "Appointment successfully confirmed."
 
@@ -273,8 +280,12 @@ async def cancel_appointment_by_id(appointment_id: str, config: RunnableConfig) 
                     slot_time=slot_time,
                     appointment_type="Appointment",
                 )
-            except Exception as e:
-                print(f"Notification failed: {e}")
+            except Exception:
+                logger.error(
+                    "Cancellation notification failed",
+                    exc_info=True,
+                    extra={"extra_data": {"appointment_id": appointment_id}},
+                )
 
             return "Success: The appointment has been cancelled and the slot is now available."
 

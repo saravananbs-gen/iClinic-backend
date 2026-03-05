@@ -12,9 +12,16 @@ from src.control.agents.tools.tools import (
     cancel_appointment_by_id,
 )
 from src.config.settings import settings
+from src.observability.logging.agent import AgentLoggingCallback
+from src.observability.logging import get_logger
+
+logger = get_logger(__name__)
 
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile", temperature=0.4, api_key=settings.GROQ_API_KEY
+    model="llama-3.3-70b-versatile",
+    temperature=0.4,
+    api_key=settings.GROQ_API_KEY,
+    callbacks=[AgentLoggingCallback()],
 )
 
 agent = create_agent(
@@ -29,4 +36,9 @@ agent = create_agent(
     ],
     system_prompt=SYSTEM_PROMPT,
     checkpointer=checkpointer,
+)
+
+logger.info(
+    "LangGraph agent created",
+    extra={"extra_data": {"model": "llama-3.3-70b-versatile", "tools_count": 6}},
 )
