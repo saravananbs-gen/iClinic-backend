@@ -8,6 +8,7 @@ from src.data.clients.redis import redis_client
 from src.core.services.twilio_service import twilio_service
 from src.core.services.agent_service import voice_agent
 from src.constants.url import BASE_URL
+from src.constants.admin import ADMIN_PHONE
 from src.schemas.auth import CurrentUserSchema
 from src.observability.logging import get_logger
 
@@ -105,7 +106,7 @@ async def handle_speech(request: Request):
             "One moment, transferring you to a human assistant for immediate help."
         )
         dial = Dial()
-        dial.number("+919629035281")
+        dial.number(ADMIN_PHONE)
         response.append(dial)
     else:
         response.say(
