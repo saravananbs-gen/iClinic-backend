@@ -9,6 +9,7 @@ from src.data.models.postgres.AvailabilitySlot import AvailabilitySlot
 from src.data.models.postgres.AppointmentType import AppointmentType
 from src.data.clients.postgres import AsyncSessionLocal
 from src.utils.generate_uuidv7 import uuid7_str
+from src.utils.db_utils import _resolve_patient_id
 from src.core.services.notification import send_appointment_notification
 from src.observability.logging import get_logger
 
@@ -81,10 +82,14 @@ async def create_appointment(
 ) -> str:
     """Create appointment and mark slot booked."""
 
-    patient_id = config["configurable"].get("user_id")
+    user_id = config["configurable"].get("user_id")
 
     try:
         async with AsyncSessionLocal() as session:
+            patient_id = await _resolve_patient_id(session, user_id)
+            if not patient_id:
+                return "Patient profile not found for the current user."
+
             normalized_name = appointment_type_name.strip().title()
 
             result = await session.execute(
@@ -97,7 +102,7 @@ async def create_appointment(
 
             appointment = Appointment(
                 id=str(uuid.UUID(uuid7_str().strip('"'))),
-                patient_id=str(uuid.UUID(patient_id.strip('"'))),
+                patient_id=patient_id,
                 provider_id=str(uuid.UUID(provider_id.strip('"'))),
                 slot_id=str(uuid.UUID(slot_id.strip('"'))),
                 appointment_type_id=appointment_type.id,
@@ -193,12 +198,16 @@ async def list_active_appointments(config: RunnableConfig) -> str:
 
     try:
         async with AsyncSessionLocal() as session:
+            resolved_patient_id = await _resolve_patient_id(session, patient_id)
+            if not resolved_patient_id:
+                return "Patient profile not found for the current user."
+
             stmt = (
                 select(Appointment, Provider, AvailabilitySlot)
                 .join(Provider, Appointment.provider_id == Provider.id)
                 .join(AvailabilitySlot, Appointment.slot_id == AvailabilitySlot.id)
                 .where(
-                    Appointment.patient_id == str(uuid.UUID(patient_id.strip('"'))),
+                    Appointment.patient_id == resolved_patient_id,
                     Appointment.status == "confirmed",
                 )
             )
@@ -237,9 +246,13 @@ async def cancel_appointment_by_id(appointment_id: str, config: RunnableConfig) 
 
     try:
         async with AsyncSessionLocal() as session:
+            resolved_patient_id = await _resolve_patient_id(session, patient_id)
+            if not resolved_patient_id:
+                return "Patient profile not found for the current user."
+
             stmt = select(Appointment).where(
                 Appointment.id == str(uuid.UUID(appointment_id.strip('"'))),
-                Appointment.patient_id == str(uuid.UUID(patient_id.strip('"'))),
+                Appointment.patient_id == resolved_patient_id,
             )
             result = await session.execute(stmt)
             appointment = result.scalar_one_or_none()
