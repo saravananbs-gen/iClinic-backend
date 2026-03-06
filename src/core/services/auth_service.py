@@ -61,6 +61,8 @@ async def signup(
         user_id=user.id,
         first_name=payload.first_name,
         last_name=payload.last_name,
+        phone=payload.phone,
+        email=payload.email,
     )
 
     access_token, refresh_token = await _issue_tokens(
