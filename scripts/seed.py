@@ -2,11 +2,12 @@
 Seed script – populates the database with realistic test data.
 
 Tables seeded (in order):
-  1. appointment_types   (3 types)
-  2. providers           (6 doctors, walk-in – no user account)
-  3. availability_slots  (30-min slots for the next 7 days, 9 AM – 5 PM)
-  4. patients            (12 walk-in patients)
-  5. appointments        (8 pre-booked appointments across patients/providers)
+  1. roles               (4 roles: patient, provider, admin, frontdesk)
+  2. appointment_types   (3 types)
+  3. providers           (6 doctors, walk-in – no user account)
+  4. availability_slots  (5 slots per provider per day for the next 7 days)
+  5. patients            (12 walk-in patients)
+  6. appointments        (8 pre-booked appointments across patients/providers)
 
 Run:
     python -m scripts.seed
@@ -19,13 +20,20 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.constants.auth import ROLE_ADMIN, ROLE_FRONTDESK, ROLE_PATIENT, ROLE_PROVIDER
 from src.data.clients.postgres import AsyncSessionLocal
 from src.data.models.postgres.AppointmentType import AppointmentType
 from src.data.models.postgres.Appointment import Appointment
 from src.data.models.postgres.AvailabilitySlot import AvailabilitySlot
 from src.data.models.postgres.Patient import Patient
 from src.data.models.postgres.Provider import Provider
+from src.data.models.postgres.Role import Role
 from src.utils.generate_uuidv7 import uuid7_str
+
+
+# ── Roles ────────────────────────────────────────────────────────────────────
+
+ROLES = [ROLE_PATIENT, ROLE_PROVIDER, ROLE_ADMIN, ROLE_FRONTDESK]
 
 
 # ── Appointment Types ────────────────────────────────────────────────────────
@@ -268,8 +276,12 @@ PATIENTS = [
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
+# Hours at which the 5 daily slots are created (30-min each)
+_SLOT_HOURS = [9, 10, 11, 14, 15]
+
+
 def _generate_slots(provider_id: str, days: int = 7) -> list[dict]:
-    """Generate 30-min slots from 9 AM to 5 PM for the next `days` days."""
+    """Generate 5 slots per day for the next `days` days (skipping Sundays)."""
     slots = []
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -278,20 +290,17 @@ def _generate_slots(provider_id: str, days: int = 7) -> list[dict]:
         # skip Sundays
         if day.weekday() == 6:
             continue
-        start_hour = 9
-        end_hour = 17  # 5 PM
-        current = day.replace(hour=start_hour)
-        while current.hour < end_hour:
+        for hour in _SLOT_HOURS:
+            start = day.replace(hour=hour, minute=0)
             slots.append(
                 {
                     "id": uuid7_str(),
                     "provider_id": provider_id,
-                    "start_time": current,
-                    "end_time": current + timedelta(minutes=30),
+                    "start_time": start,
+                    "end_time": start + timedelta(minutes=30),
                     "is_booked": False,
                 }
             )
-            current += timedelta(minutes=30)
     return slots
 
 
@@ -309,7 +318,18 @@ async def _row_exists(session: AsyncSession, model, **filters) -> bool:
 
 async def seed():
     async with AsyncSessionLocal() as session:
-        # 1 ── Appointment types
+        # 1 ── Roles
+        role_count = 0
+        for role_name in ROLES:
+            if await _row_exists(session, Role, name=role_name):
+                print(f"  ✓ role already exists: {role_name}")
+                continue
+            session.add(Role(id=uuid7_str(), name=role_name))
+            role_count += 1
+        await session.flush()
+        print(f"✔ Roles: {len(ROLES)} ({role_count} new)")
+
+        # 2 ── Appointment types
         appt_type_ids: dict[str, str] = {}
         for data in APPOINTMENT_TYPES:
             if await _row_exists(session, AppointmentType, name=data["name"]):
@@ -330,7 +350,7 @@ async def seed():
         await session.flush()
         print(f"✔ Appointment types: {len(appt_type_ids)}")
 
-        # 2 ── Providers
+        # 3 ── Providers
         provider_ids: list[str] = []
         for data in PROVIDERS:
             if await _row_exists(session, Provider, phone=data["phone"]):
@@ -352,7 +372,7 @@ async def seed():
         await session.flush()
         print(f"✔ Providers: {len(provider_ids)}")
 
-        # 3 ── Availability slots (for each provider, next 7 days)
+        # 4 ── Availability slots (for each provider, next 7 days)
         slot_count = 0
         all_slots: list[dict] = []
         for pid in provider_ids:
@@ -388,7 +408,7 @@ async def seed():
         await session.flush()
         print(f"✔ Availability slots created: {slot_count}")
 
-        # 4 ── Patients
+        # 5 ── Patients
         patient_ids: list[str] = []
         for data in PATIENTS:
             if await _row_exists(session, Patient, phone=data["phone"]):
@@ -410,7 +430,7 @@ async def seed():
         await session.flush()
         print(f"✔ Patients: {len(patient_ids)}")
 
-        # 5 ── Pre-booked appointments
+        # 6 ── Pre-booked appointments
         #      Book a few realistic appointments so the system has data to display
         BOOKINGS = [
             # (patient_index, provider_index, slot_day_offset, slot_hour, appt_type_name, channel, notes)
