@@ -5,17 +5,24 @@ from datetime import datetime
 
 
 from ...clients.postgres import Base
+from ....utils.generate_uuidv7 import uuid7_str
 
 
 class Provider(Base):
     __tablename__ = "providers"
 
     id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id"), primary_key=True
+        UUID(as_uuid=False), primary_key=True, default=uuid7_str
+    )
+
+    user_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id"), unique=True, nullable=True
     )
 
     first_name: Mapped[str | None] = mapped_column(String)
     last_name: Mapped[str | None] = mapped_column(String)
+    phone: Mapped[str | None] = mapped_column(String)
+    email: Mapped[str | None] = mapped_column(String)
     specialization: Mapped[str | None] = mapped_column(String)
     notable_work: Mapped[str | None] = mapped_column(String)
     experience_years: Mapped[int | None] = mapped_column(Integer)

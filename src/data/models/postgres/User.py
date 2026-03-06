@@ -34,7 +34,17 @@ class User(Base):
     updated_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False))
 
     role = relationship("Role", back_populates="users")
-    provider = relationship("Provider", back_populates="user", uselist=False)
-    patient = relationship("Patient", back_populates="user", uselist=False)
+    provider = relationship(
+        "Provider",
+        back_populates="user",
+        uselist=False,
+        foreign_keys="[Provider.user_id]",
+    )
+    patient = relationship(
+        "Patient",
+        back_populates="user",
+        uselist=False,
+        foreign_keys="[Patient.user_id]",
+    )
     sessions = relationship("Session", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
