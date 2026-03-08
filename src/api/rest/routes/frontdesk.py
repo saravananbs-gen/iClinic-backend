@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.rest.dependencies import require_frontdesk
 from src.core.services import frontdesk_service
 from src.data.clients.postgres import get_async_session
 from src.schemas.frontdesk import (
@@ -15,7 +16,7 @@ from src.schemas.frontdesk import (
     AppointmentDetailResponse,
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_frontdesk)])
 
 
 @router.get("/patients", response_model=list[PatientResponse])

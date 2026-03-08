@@ -53,12 +53,13 @@ def _verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def _create_access_token(user: User, jti: str) -> str:
+def _create_access_token(user: User, jti: str, role: str) -> str:
     expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRES_MINUTES)
     payload = {
         "user_id": user.id,
         "user_phonenumber": user.phone,
         "user_email": user.email,
+        "role": role,
         "token_type": "access",
         "jti": jti,
         "exp": datetime.now() + expires_delta,
@@ -68,12 +69,13 @@ def _create_access_token(user: User, jti: str) -> str:
     )
 
 
-def _create_refresh_token(user: User, jti: str) -> str:
+def _create_refresh_token(user: User, jti: str, role: str) -> str:
     expires_delta = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRES_MINUTES)
     payload = {
         "user_id": user.id,
         "user_phonenumber": user.phone,
         "user_email": user.email,
+        "role": role,
         "token_type": "refresh",
         "jti": jti,
         "exp": datetime.now() + expires_delta,
@@ -113,6 +115,7 @@ def _decode_refresh_token(token: str) -> dict:
 async def _issue_tokens(
     session: AsyncSession,
     user: User,
+    role: str,
     *,
     ip_address: str | None,
     user_agent: str | None,
@@ -131,6 +134,6 @@ async def _issue_tokens(
         user_agent=user_agent,
     )
 
-    access_token = _create_access_token(user, jti)
-    refresh_token = _create_refresh_token(user, jti)
+    access_token = _create_access_token(user, jti, role)
+    refresh_token = _create_refresh_token(user, jti, role)
     return access_token, refresh_token

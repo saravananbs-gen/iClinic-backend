@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends
 
 from src.schemas.auth import CurrentUserSchema
-from src.api.rest.dependencies import get_current_user
+from src.api.rest.dependencies import require_patient
 from src.core.services.voice_service import (
     twilio_entrypoint,
     handle_speech,
@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get("/make-call")
 async def make_call(
-    to_number: str, user: CurrentUserSchema = Depends(get_current_user)
+    to_number: str, user: CurrentUserSchema = Depends(require_patient)
 ):
     return await initiate_call(to_number=to_number, user=user)
 
