@@ -3,11 +3,12 @@ Seed script – populates the database with realistic test data.
 
 Tables seeded (in order):
   1. roles               (4 roles: patient, provider, admin, frontdesk)
-  2. appointment_types   (3 types)
-  3. providers           (6 doctors, walk-in – no user account)
-  4. availability_slots  (5 slots per provider per day for the next 7 days)
-  5. patients            (12 walk-in patients)
-  6. appointments        (8 pre-booked appointments across patients/providers)
+  2. frontdesk users     (2 users with the frontdesk role, password: frontdesk123)
+  3. appointment_types   (3 types)
+  4. providers           (6 doctors, walk-in – no user account)
+  5. availability_slots  (5 slots per provider per day for the next 7 days)
+  6. patients            (12 walk-in patients)
+  7. appointments        (8 pre-booked appointments across patients/providers)
 
 Run:
     python -m scripts.seed
@@ -28,6 +29,8 @@ from src.data.models.postgres.AvailabilitySlot import AvailabilitySlot
 from src.data.models.postgres.Patient import Patient
 from src.data.models.postgres.Provider import Provider
 from src.data.models.postgres.Role import Role
+from src.data.models.postgres.User import User
+from src.utils.auth import _hash_password
 from src.utils.generate_uuidv7 import uuid7_str
 
 
@@ -133,6 +136,29 @@ PROVIDERS = [
         "bio": "Dr. Vikram Singh is an ENT specialist experienced in managing hearing disorders, chronic sinusitis, and paediatric airway problems.",
     },
 ]
+
+
+# ── Patients (walk-in) ───────────────────────────────────────────────────────
+
+# ── Frontdesk Users ──────────────────────────────────────────────────────────
+# Password for all seeded frontdesk users: "frontdesk123"
+
+FRONTDESK_USERS = [
+    {
+        "email": "priya.frontdesk@iclinic.in",
+        "phone": "+919800200101",
+        "first_name": "Priya",
+        "last_name": "Kapoor",
+    },
+    {
+        "email": "arun.frontdesk@iclinic.in",
+        "phone": "+919800200102",
+        "first_name": "Arun",
+        "last_name": "Bhatia",
+    },
+]
+
+FRONTDESK_DEFAULT_PASSWORD = "frontdesk123"
 
 
 # ── Patients (walk-in) ───────────────────────────────────────────────────────
@@ -329,7 +355,31 @@ async def seed():
         await session.flush()
         print(f"✔ Roles: {len(ROLES)} ({role_count} new)")
 
-        # 2 ── Appointment types
+        # 2 ── Frontdesk users
+        frontdesk_role = (
+            await session.execute(select(Role).where(Role.name == ROLE_FRONTDESK))
+        ).scalar_one_or_none()
+
+        fd_count = 0
+        if frontdesk_role:
+            password_hash = _hash_password(FRONTDESK_DEFAULT_PASSWORD)
+            for data in FRONTDESK_USERS:
+                if await _row_exists(session, User, email=data["email"]):
+                    print(f"  ✓ frontdesk user already exists: {data['email']}")
+                    continue
+                user = User(
+                    id=uuid7_str(),
+                    role_id=frontdesk_role.id,
+                    email=data["email"],
+                    phone=data["phone"],
+                    password_hash=password_hash,
+                )
+                session.add(user)
+                fd_count += 1
+            await session.flush()
+        print(f"✔ Frontdesk users: {len(FRONTDESK_USERS)} ({fd_count} new)")
+
+        # 3 ── Appointment types
         appt_type_ids: dict[str, str] = {}
         for data in APPOINTMENT_TYPES:
             if await _row_exists(session, AppointmentType, name=data["name"]):
@@ -350,7 +400,7 @@ async def seed():
         await session.flush()
         print(f"✔ Appointment types: {len(appt_type_ids)}")
 
-        # 3 ── Providers
+        # 4 ── Providers
         provider_ids: list[str] = []
         for data in PROVIDERS:
             if await _row_exists(session, Provider, phone=data["phone"]):
@@ -372,7 +422,7 @@ async def seed():
         await session.flush()
         print(f"✔ Providers: {len(provider_ids)}")
 
-        # 4 ── Availability slots (for each provider, next 7 days)
+        # 5 ── Availability slots (for each provider, next 7 days)
         slot_count = 0
         all_slots: list[dict] = []
         for pid in provider_ids:
@@ -408,7 +458,7 @@ async def seed():
         await session.flush()
         print(f"✔ Availability slots created: {slot_count}")
 
-        # 5 ── Patients
+        # 6 ── Patients
         patient_ids: list[str] = []
         for data in PATIENTS:
             if await _row_exists(session, Patient, phone=data["phone"]):
@@ -430,7 +480,7 @@ async def seed():
         await session.flush()
         print(f"✔ Patients: {len(patient_ids)}")
 
-        # 6 ── Pre-booked appointments
+        # 7 ── Pre-booked appointments
         #      Book a few realistic appointments so the system has data to display
         BOOKINGS = [
             # (patient_index, provider_index, slot_day_offset, slot_hour, appt_type_name, channel, notes)
