@@ -27,8 +27,8 @@ def _map_provider(provider: Provider | None) -> ProviderSummary | None:
         return None
 
     name = _compose_name(provider.first_name, provider.last_name)
-    email = provider.user.email if provider.user else None
-    phone = provider.user.phone if provider.user else None
+    email = provider.user.email if provider.user else provider.email
+    phone = provider.user.phone if provider.user else provider.phone
 
     return ProviderSummary(
         id=provider.id,

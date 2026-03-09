@@ -27,7 +27,7 @@ async def login_oauth(
         password=form_data.password,
     )
 
-    access_token, refresh_token = await auth_service.login(
+    access_token, refresh_token, role = await auth_service.login(
         session,
         payload,
         ip_address=request.client.host if request.client else None,
@@ -39,6 +39,7 @@ async def login_oauth(
     return {
         "access_token": access_token,
         "token_type": "bearer",
+        "role": role,
     }
 
 
@@ -49,14 +50,14 @@ async def signup(
     response: Response,
     session: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:
-    access_token, refresh_token = await auth_service.signup(
+    access_token, refresh_token, role = await auth_service.signup(
         session,
         payload,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
     _set_refresh_cookie(response, refresh_token)
-    return TokenResponse(access_token=access_token)
+    return TokenResponse(access_token=access_token, role=role)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -66,14 +67,14 @@ async def login(
     response: Response,
     session: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:
-    access_token, refresh_token = await auth_service.login(
+    access_token, refresh_token, role = await auth_service.login(
         session,
         payload,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
     _set_refresh_cookie(response, refresh_token)
-    return TokenResponse(access_token=access_token)
+    return TokenResponse(access_token=access_token, role=role)
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -84,14 +85,14 @@ async def refresh_token(
 ) -> TokenResponse:
     refresh_token_value = _require_refresh_cookie(request)
 
-    access_token, new_refresh_token = await auth_service.refresh(
+    access_token, new_refresh_token, role = await auth_service.refresh(
         session,
         refresh_token_value,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
     _set_refresh_cookie(response, new_refresh_token)
-    return TokenResponse(access_token=access_token)
+    return TokenResponse(access_token=access_token, role=role)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
