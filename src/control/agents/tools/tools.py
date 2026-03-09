@@ -27,7 +27,7 @@ async def find_providers(config: RunnableConfig) -> str:
             data = [
                 {
                     "id": p.id,
-                    "name": p.first_name + p.last_name,
+                    "name": f"{p.first_name} {p.last_name}",
                     "specialization": p.specialization,
                     "experience": p.experience_years,
                     "fee": str(p.consultation_fee),
