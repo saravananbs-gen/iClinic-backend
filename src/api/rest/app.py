@@ -8,6 +8,8 @@ from src.api.rest.routes.health import router as health_router
 from src.api.rest.routes.dashboard import router as dashboard_router
 from src.api.rest.routes.frontdesk import router as frontdesk_router
 from src.data.clients.checkpointer import checkpoint_pool, checkpointer
+from src.data.clients.postgres import engine, Base
+from src.data.models.postgres import *  # noqa: F403
 from src.constants.logging import SERVICE_NAME, ENVIRONMENT, LOG_LEVEL
 from src.observability.logging import setup_logging, get_logger
 from src.api.middleware.logging import RequestLoggingMiddleware
@@ -26,6 +28,9 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logger.info("Application starting up")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created / verified")
         await checkpoint_pool.open()
         await checkpointer.setup()
         logger.info("Application ready")
