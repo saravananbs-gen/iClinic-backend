@@ -41,9 +41,17 @@ async def find_providers(config: RunnableConfig) -> str:
 
 
 @tool
-async def get_provider_slots(provider_id: str, config: RunnableConfig) -> str:
+async def get_provider_slots(
+    provider_id: str, preferred_time: str, config: RunnableConfig
+) -> str:
     """Get available slots for a provider.
     provider_id is a uuid which is given to each provider.
+    get_provider_slots can ONLY be called if BOTH are known:
+
+        1. provider_id
+        2. preferred_time OR preferred_day
+
+        If either is missing, ask the caller for it.
     Eg:
     {"id": "cccccccc-cccc-cccc-cccc-cccccccccccc", "name": "MeeraSharma", "specialization": "Dermatology", "experience": 8, "fee": "600.00"}
     here cccccccc-cccc-cccc-cccc-cccccccccccc is the provider_id"""
@@ -60,7 +68,8 @@ async def get_provider_slots(provider_id: str, config: RunnableConfig) -> str:
 
             data = [
                 {
-                    "slot_id": s.id,
+                    "slot_id": str(s.id),
+                    "time": s.start_time.strftime("%A %I:%M %p"),
                     "start": s.start_time.isoformat(),
                     "end": s.end_time.isoformat(),
                 }
