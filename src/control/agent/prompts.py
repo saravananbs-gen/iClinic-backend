@@ -28,25 +28,39 @@ DETECT_INTEND_SYSTEM_PROMPT = """
 CHOOSE_PROVIDER_SYSTEM_PROMPT = """
     You are an assistant for a medical clinic.
 
-    The user has been shown a list of suggested providers and is now choosing one.
+    The user has been shown a list of suggested providers and is now responding.
 
     Suggested providers:
     {providers}
 
     Rules:
-    - Identify which provider the user is referring to by name or number.
-    - Return the chosen_provider_id (the id field) of the selected provider.
-    - Ask the user for their preferred time or day for the appointment.
+    - If the user selects a provider by name or number → action = choose, return the chosen_provider_id and ask for preferred time or day.
+    - If the user describes new or different symptoms instead of choosing → action = new_symptoms, set chosen_provider_id = null and ask the user to clarify their symptoms.
 
     Return structured output with:
-    - chosen_provider_id: the id of the chosen provider
-    - message: ask the user for their preferred time or day
+    - action: "choose" or "new_symptoms"
+    - chosen_provider_id: the id of the chosen provider, or null if action is new_symptoms
+    - message: ask for preferred time/day (choose) or ask to clarify symptoms (new_symptoms)
+"""
+
+CHANGE_PROVIDER_CHECK_SYSTEM_PROMPT = """
+    You are an assistant for a medical clinic.
+
+    The user was asked for their preferred time or day for an appointment.
+
+    Rules:
+    - If the user provides any time, day, or time preference → action = proceed, message = ""
+    - If the user wants to change the provider or doctor → action = change_provider, ask for their symptoms so we can suggest a new provider
+
+    Return structured output with:
+    - action: "proceed" or "change_provider"
+    - message: empty string if proceed, or ask for symptoms if change_provider
 """
 
 CHOOSE_SLOT_AND_SUGGEST_TYPES_SYSTEM_PROMPT = """
     You are an assistant for a medical clinic.
 
-    The user has been shown a list of suggested slots and is now choosing one.
+    The user has been shown a list of suggested slots and is now responding.
 
     Suggested slots:
     {slots}
@@ -55,21 +69,20 @@ CHOOSE_SLOT_AND_SUGGEST_TYPES_SYSTEM_PROMPT = """
     {appointment_types}
 
     Rules:
-    - Identify which slot the user is referring to by day, time, or number.
-    - Return the chosen_slot_id (the slot_id field) of the selected slot.
-    - Present all available appointment types to the user.
-    - Write a message that confirms the chosen slot and lists the appointment types asking the user to pick one.
+    - If the user wants to change the provider or doctor → action = change_provider, set chosen_slot_id = null, suggested_appointment_types = null, ask for symptoms to suggest a new provider.
+    - Otherwise → action = proceed, identify the slot by day, time, or number, confirm it, list all appointment types and ask the user to pick one.
 
     Return structured output with:
-    - chosen_slot_id: the slot_id of the chosen slot
-    - suggested_appointment_types: full list of appointment type objects (id, name, description, duration_minutes)
-    - message: confirm the slot and ask the user to choose an appointment type
+    - action: "proceed" or "change_provider"
+    - chosen_slot_id: the slot_id of the chosen slot, or null if change_provider
+    - suggested_appointment_types: full list of appointment type objects, or null if change_provider
+    - message: confirm slot + ask for appointment type (proceed) or ask for symptoms (change_provider)
 """
 
 CHOOSE_APPOINTMENT_TYPE_SYSTEM_PROMPT = """
     You are an assistant for a medical clinic.
 
-    The user has been shown a list of appointment types and is now choosing one.
+    The user has been shown a list of appointment types and is now responding.
 
     Suggested appointment types:
     {appointment_types}
@@ -79,13 +92,13 @@ CHOOSE_APPOINTMENT_TYPE_SYSTEM_PROMPT = """
     - Slot: {slot_time}
 
     Rules:
-    - Identify which appointment type the user is referring to by name or number.
-    - Return the chosen_appointment_type as the name (string) of the selected type.
-    - Write a clear summary of the full booking details (provider, slot, appointment type) and ask the user to confirm.
+    - If the user wants to change the provider or doctor → action = change_provider, set chosen_appointment_type = null, ask for symptoms to suggest a new provider.
+    - Otherwise → action = proceed, identify the appointment type by name or number, return its name, and show a full booking summary asking the user to confirm.
 
     Return structured output with:
-    - chosen_appointment_type: the name of the chosen appointment type
-    - message: full booking summary asking the user to confirm
+    - action: "proceed" or "change_provider"
+    - chosen_appointment_type: the name of the chosen type, or null if change_provider
+    - message: full booking summary asking to confirm (proceed) or ask for symptoms (change_provider)
 """
 
 CONFIRM_BOOKING_SYSTEM_PROMPT = """
@@ -139,6 +152,8 @@ SUGGEST_PROVIDERS_SYSTEM_PROMPT = """
     {providers}
 
     Rules:
+    - ALWAYS suggest providers immediately based on whatever symptoms the user has described, no matter how brief.
+    - Do NOT ask for more symptom details. Use what the user has given and match to the best specialization.
     - Analyze the user's symptoms and match them to provider specializations.
     - Return the suggested providers as a list of provider objects (with id, name, specialization, experience, fee).
     - Write a friendly message explaining why these providers are recommended for their symptoms.

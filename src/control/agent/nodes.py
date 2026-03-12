@@ -7,6 +7,7 @@ from src.control.agent.prompts import (
     SUGGEST_PROVIDERS_SYSTEM_PROMPT,
     CHOOSE_PROVIDER_SYSTEM_PROMPT,
     SUGGEST_SLOTS_SYSTEM_PROMPT,
+    CHANGE_PROVIDER_CHECK_SYSTEM_PROMPT,
     CHOOSE_SLOT_AND_SUGGEST_TYPES_SYSTEM_PROMPT,
     CHOOSE_APPOINTMENT_TYPE_SYSTEM_PROMPT,
     CONFIRM_BOOKING_SYSTEM_PROMPT,
@@ -16,6 +17,7 @@ from src.control.agent.schemas import (
     SuggestProvidersResponse,
     ChooseProviderResponse,
     SuggestSlotsResponse,
+    ChangeProviderCheckResponse,
     ChooseSlotAndSuggestTypesResponse,
     ChooseAppointmentTypeResponse,
     ConfirmBookingResponse,
@@ -40,6 +42,7 @@ structured_llm = llm.with_structured_output(IntentResponse)
 suggest_providers_llm = llm.with_structured_output(SuggestProvidersResponse)
 choose_provider_llm = llm.with_structured_output(ChooseProviderResponse)
 suggest_slots_llm = llm.with_structured_output(SuggestSlotsResponse)
+change_provider_check_llm = llm.with_structured_output(ChangeProviderCheckResponse)
 choose_slot_and_suggest_types_llm = llm.with_structured_output(
     ChooseSlotAndSuggestTypesResponse
 )
@@ -92,6 +95,13 @@ def choose_provider(state: AgentState):
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.action == "new_symptoms":
+        return {
+            "suggested_providers": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
     return {
         "chosen_provider_id": result.chosen_provider_id,
         "messages": state["messages"] + [AIMessage(content=result.message)],
@@ -100,6 +110,25 @@ def choose_provider(state: AgentState):
 
 async def suggest_slots(state: AgentState, config):
     user_message = state["messages"][-1]
+
+    check_result = change_provider_check_llm.invoke(
+        [
+            SystemMessage(content=CHANGE_PROVIDER_CHECK_SYSTEM_PROMPT),
+            HumanMessage(content=user_message.content),
+        ]
+    )
+
+    if check_result.action == "change_provider":
+        return {
+            "suggested_providers": None,
+            "chosen_provider_id": None,
+            "suggested_slots": None,
+            "chosen_slot_id": None,
+            "suggested_appointment_types": None,
+            "chosen_appointment_type": None,
+            "messages": state["messages"] + [AIMessage(content=check_result.message)],
+        }
+
     slots_json = await get_provider_slots.ainvoke(
         {
             "provider_id": state["chosen_provider_id"],
@@ -136,6 +165,18 @@ async def choose_slot_and_suggest_types(state: AgentState, config):
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.action == "change_provider":
+        return {
+            "suggested_providers": None,
+            "chosen_provider_id": None,
+            "suggested_slots": None,
+            "chosen_slot_id": None,
+            "suggested_appointment_types": None,
+            "chosen_appointment_type": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
     return {
         "chosen_slot_id": result.chosen_slot_id,
         "suggested_appointment_types": result.suggested_appointment_types,
@@ -177,6 +218,17 @@ def choose_appointment_type(state: AgentState):
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.action == "change_provider":
+        return {
+            "suggested_providers": None,
+            "chosen_provider_id": None,
+            "suggested_slots": None,
+            "chosen_slot_id": None,
+            "suggested_appointment_types": None,
+            "chosen_appointment_type": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     return {
         "chosen_appointment_type": result.chosen_appointment_type,

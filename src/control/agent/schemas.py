@@ -49,7 +49,8 @@ class SuggestProvidersResponse(BaseModel):
 
 
 class ChooseProviderResponse(BaseModel):
-    chosen_provider_id: str
+    action: Literal["choose", "new_symptoms"]
+    chosen_provider_id: Optional[str]
     message: str
 
 
@@ -58,14 +59,21 @@ class SuggestSlotsResponse(BaseModel):
     message: str
 
 
+class ChangeProviderCheckResponse(BaseModel):
+    action: Literal["proceed", "change_provider"]
+    message: str
+
+
 class ChooseSlotAndSuggestTypesResponse(BaseModel):
-    chosen_slot_id: str
-    suggested_appointment_types: List[AppointmentType]
+    action: Literal["proceed", "change_provider"]
+    chosen_slot_id: Optional[str]
+    suggested_appointment_types: Optional[List[AppointmentType]]
     message: str
 
 
 class ChooseAppointmentTypeResponse(BaseModel):
-    chosen_appointment_type: str
+    action: Literal["proceed", "change_provider"]
+    chosen_appointment_type: Optional[str]
     message: str
 
 
