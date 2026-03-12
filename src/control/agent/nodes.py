@@ -11,6 +11,9 @@ from src.control.agent.prompts import (
     CHOOSE_SLOT_AND_SUGGEST_TYPES_SYSTEM_PROMPT,
     CHOOSE_APPOINTMENT_TYPE_SYSTEM_PROMPT,
     CONFIRM_BOOKING_SYSTEM_PROMPT,
+    COLLECT_CANCEL_REASON_SYSTEM_PROMPT,
+    CHOOSE_APPOINTMENT_TO_CANCEL_SYSTEM_PROMPT,
+    CONFIRM_CANCEL_SYSTEM_PROMPT,
 )
 from src.control.agent.schemas import (
     IntentResponse,
@@ -21,6 +24,9 @@ from src.control.agent.schemas import (
     ChooseSlotAndSuggestTypesResponse,
     ChooseAppointmentTypeResponse,
     ConfirmBookingResponse,
+    CollectCancelReasonResponse,
+    ChooseAppointmentToCancelResponse,
+    ConfirmCancelResponse,
     AgentState,
 )
 from src.control.agent.tools import (
@@ -28,6 +34,8 @@ from src.control.agent.tools import (
     get_provider_slots,
     get_appointment_types,
     create_appointment,
+    list_active_appointments,
+    cancel_appointment_by_id,
 )
 
 
@@ -48,6 +56,22 @@ choose_slot_and_suggest_types_llm = llm.with_structured_output(
 )
 choose_appointment_type_llm = llm.with_structured_output(ChooseAppointmentTypeResponse)
 confirm_booking_llm = llm.with_structured_output(ConfirmBookingResponse)
+collect_cancel_reason_llm = llm.with_structured_output(CollectCancelReasonResponse)
+choose_appointment_to_cancel_llm = llm.with_structured_output(
+    ChooseAppointmentToCancelResponse
+)
+confirm_cancel_llm = llm.with_structured_output(ConfirmCancelResponse)
+
+
+def _format_appointments_for_cancel_message(appointments: list[dict]) -> str:
+    appointment_lines = [
+        (
+            f"{index}. {appointment['provider_name']} "
+            f"({appointment['specialization']}) - {appointment['date']} at {appointment['time']}"
+        )
+        for index, appointment in enumerate(appointments, start=1)
+    ]
+    return "\n".join(appointment_lines)
 
 
 def detect_intent(state: AgentState):
@@ -323,5 +347,210 @@ async def confirm_booking(state: AgentState, config):
         return {
             "suggested_appointment_types": state["suggested_appointment_types"],
             "chosen_appointment_type": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
+
+async def collect_cancel_reason(state: AgentState, config):
+
+    user_message = state["messages"][-1]
+
+    result = collect_cancel_reason_llm.invoke(
+        [
+            SystemMessage(content=COLLECT_CANCEL_REASON_SYSTEM_PROMPT),
+            HumanMessage(content=user_message.content),
+        ]
+    )
+
+    if result.action == "switch_to_book":
+        return {
+            "intent": "book",
+            "cancel_reason": None,
+            "active_appointments": None,
+            "chosen_appointment_id": None,
+            "cancel_confirmed": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
+    appointments_json = await list_active_appointments.ainvoke({}, config)
+
+    if appointments_json == "You don't have any active appointments at the moment.":
+        return {
+            "cancel_reason": result.cancel_reason,
+            "active_appointments": [],
+            "messages": state["messages"]
+            + [
+                AIMessage(
+                    content=(
+                        f"{result.message} You don't have any upcoming appointments to cancel."
+                    )
+                )
+            ],
+        }
+
+    import json
+
+    appointments = json.loads(appointments_json)
+    appointments_list = _format_appointments_for_cancel_message(appointments)
+
+    return {
+        "cancel_reason": result.cancel_reason,
+        "active_appointments": appointments,
+        "messages": state["messages"]
+        + [
+            AIMessage(
+                content=(
+                    f"{result.message}\n\n"
+                    f"Here are your upcoming appointments:\n\n"
+                    f"{appointments_list}\n\n"
+                    "Please tell me which appointment you'd like to cancel. "
+                    "You can mention the doctor's name, date, or time."
+                )
+            )
+        ],
+    }
+
+
+async def list_appointments_to_cancel(state: AgentState, config):
+
+    appointments_json = await list_active_appointments.ainvoke({}, config)
+
+    if appointments_json == "You don't have any active appointments at the moment.":
+        return {
+            "active_appointments": [],
+            "messages": state["messages"]
+            + [
+                AIMessage(content="You don't have any upcoming appointments to cancel.")
+            ],
+        }
+
+    import json
+
+    appointments = json.loads(appointments_json)
+
+    appointments_info = [
+        {
+            "appointment_id": a["appointment_id"],
+            "provider_name": a["provider_name"],
+            "specialization": a["specialization"],
+            "date": a["date"],
+            "time": a["time"],
+        }
+        for a in appointments
+    ]
+
+    system_prompt = CHOOSE_APPOINTMENT_TO_CANCEL_SYSTEM_PROMPT.format(
+        appointments=appointments_info
+    )
+
+    result = choose_appointment_to_cancel_llm.invoke(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(
+                content="Here are your upcoming appointments. Which one would you like to cancel?"
+            ),
+        ]
+    )
+
+    return {
+        "active_appointments": appointments,
+        "messages": state["messages"] + [AIMessage(content=result.message)],
+    }
+
+
+def choose_appointment_to_cancel(state: AgentState):
+
+    user_message = state["messages"][-1]
+
+    appointments_info = [
+        {
+            "appointment_id": a["appointment_id"],
+            "provider_name": a["provider_name"],
+            "specialization": a["specialization"],
+            "date": a["date"],
+            "time": a["time"],
+        }
+        for a in state["active_appointments"]
+    ]
+
+    system_prompt = CHOOSE_APPOINTMENT_TO_CANCEL_SYSTEM_PROMPT.format(
+        appointments=appointments_info
+    )
+
+    result = choose_appointment_to_cancel_llm.invoke(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_message.content),
+        ]
+    )
+
+    if result.action == "switch_to_book":
+        return {
+            "intent": "book",
+            "cancel_reason": None,
+            "active_appointments": None,
+            "chosen_appointment_id": None,
+            "cancel_confirmed": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
+    return {
+        "chosen_appointment_id": result.chosen_appointment_id,
+        "messages": state["messages"] + [AIMessage(content=result.message)],
+    }
+
+
+async def confirm_cancel(state: AgentState, config):
+
+    user_message = state["messages"][-1]
+
+    chosen = next(
+        (
+            a
+            for a in state["active_appointments"]
+            if a["appointment_id"] == state["chosen_appointment_id"]
+        ),
+        state["active_appointments"][0],
+    )
+
+    appointment_details = (
+        f"Provider: {chosen['provider_name']} ({chosen['specialization']}), "
+        f"Date: {chosen['date']} at {chosen['time']}"
+    )
+
+    result = confirm_cancel_llm.invoke(
+        [
+            SystemMessage(
+                content=CONFIRM_CANCEL_SYSTEM_PROMPT.format(
+                    appointment_details=appointment_details
+                )
+            ),
+            HumanMessage(content=user_message.content),
+        ]
+    )
+
+    if result.action == "confirm":
+        await cancel_appointment_by_id.ainvoke(
+            {"appointment_id": state["chosen_appointment_id"]},
+            config,
+        )
+        return {
+            "cancel_confirmed": True,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
+    elif result.action == "switch_to_book":
+        return {
+            "intent": "book",
+            "cancel_reason": None,
+            "active_appointments": None,
+            "chosen_appointment_id": None,
+            "cancel_confirmed": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
+    else:  # abort
+        return {
+            "cancel_confirmed": False,
             "messages": state["messages"] + [AIMessage(content=result.message)],
         }

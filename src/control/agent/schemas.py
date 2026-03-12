@@ -29,6 +29,7 @@ class AppointmentType(BaseModel):
 class AgentState(TypedDict):
     messages: List[BaseMessage]
     intent: str
+
     suggested_providers: Optional[List[SuggestedProvider]]
     chosen_provider_id: Optional[str]
     suggested_slots: Optional[List[SuggestedSlot]]
@@ -36,6 +37,11 @@ class AgentState(TypedDict):
     suggested_appointment_types: Optional[List[AppointmentType]]
     chosen_appointment_type: Optional[str]
     book_confirmed: Optional[bool]
+
+    cancel_reason: Optional[str]
+    active_appointments: Optional[List[dict]]
+    chosen_appointment_id: Optional[str]
+    cancel_confirmed: Optional[bool]
 
 
 class IntentResponse(BaseModel):
@@ -81,4 +87,21 @@ class ConfirmBookingResponse(BaseModel):
     action: Literal[
         "confirm", "change_provider", "change_slot", "change_appointment_type"
     ]
+    message: str
+
+
+class CollectCancelReasonResponse(BaseModel):
+    action: Literal["proceed", "switch_to_book"]
+    cancel_reason: Optional[str]
+    message: str
+
+
+class ChooseAppointmentToCancelResponse(BaseModel):
+    action: Literal["choose", "switch_to_book"]
+    chosen_appointment_id: Optional[str]
+    message: str
+
+
+class ConfirmCancelResponse(BaseModel):
+    action: Literal["confirm", "abort", "switch_to_book"]
     message: str
