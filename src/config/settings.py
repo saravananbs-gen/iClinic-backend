@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: str
     POSTGRES_DB: str
+    REDIS_HOST: str
+    REDIS_PORT: str
     LANGSMITH_TRACING: str
     LANGSMITH_ENDPOINT: str
     LANGSMITH_API_KEY: str

@@ -24,4 +24,5 @@ dependencies = [
     "uuid6>=2025.0.1",
     "uvicorn[standard]>=0.41.0",
     "pydantic[email]>=2.12.5",
+    "langsmith>=0.7.7",
 ]
