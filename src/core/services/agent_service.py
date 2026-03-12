@@ -1,7 +1,8 @@
 import time
 from langchain_core.messages import HumanMessage
 
-from src.control.agents.create_agent import agent
+# from src.control.agents.create_agent import agent
+from src.control.agent.graph import graph
 from src.observability.logging import get_logger
 
 logger = get_logger(__name__)
@@ -9,7 +10,7 @@ logger = get_logger(__name__)
 
 class VoiceAgent:
     def __init__(self):
-        self.agent = agent
+        self.agent = graph
 
     async def generate_response(
         self,

@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str
     TWILIO_PHONE_NUMBER: str
     GROQ_API_KEY: str
+    AZURE_FOUNDRY_KEY: str
+    AZURE_FOUNDRY_ENDPOINT: str
+    LLM_DEPLOYMENT_NAME: str
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
     POSTGRES_HOST: str

@@ -7,6 +7,7 @@ from src.api.rest.routes.auth import router as auth_router
 from src.api.rest.routes.health import router as health_router
 from src.api.rest.routes.dashboard import router as dashboard_router
 from src.api.rest.routes.frontdesk import router as frontdesk_router
+from src.api.rest.routes.chat import router as chat_router
 from src.data.clients.checkpointer import checkpoint_pool, checkpointer
 from src.data.clients.postgres import engine, Base
 from src.data.models.postgres import *  # noqa: F403
@@ -48,5 +49,5 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/auth", tags=["Auth"])
     app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
     app.include_router(frontdesk_router, prefix="/frontdesk", tags=["Frontdesk"])
-
+    app.include_router(chat_router, prefix="/chat", tags=["Chat"])
     return app
