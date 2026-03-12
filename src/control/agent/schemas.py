@@ -65,18 +65,20 @@ class ChangeProviderCheckResponse(BaseModel):
 
 
 class ChooseSlotAndSuggestTypesResponse(BaseModel):
-    action: Literal["proceed", "change_provider"]
+    action: Literal["proceed", "change_provider", "change_slot"]
     chosen_slot_id: Optional[str]
     suggested_appointment_types: Optional[List[AppointmentType]]
     message: str
 
 
 class ChooseAppointmentTypeResponse(BaseModel):
-    action: Literal["proceed", "change_provider"]
+    action: Literal["proceed", "change_provider", "change_slot"]
     chosen_appointment_type: Optional[str]
     message: str
 
 
 class ConfirmBookingResponse(BaseModel):
-    action: Literal["confirm", "change_provider", "change_slot"]
+    action: Literal[
+        "confirm", "change_provider", "change_slot", "change_appointment_type"
+    ]
     message: str

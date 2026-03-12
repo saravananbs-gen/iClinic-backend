@@ -177,6 +177,15 @@ async def choose_slot_and_suggest_types(state: AgentState, config):
             "messages": state["messages"] + [AIMessage(content=result.message)],
         }
 
+    if result.action == "change_slot":
+        return {
+            "suggested_slots": None,
+            "chosen_slot_id": None,
+            "suggested_appointment_types": None,
+            "chosen_appointment_type": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
     return {
         "chosen_slot_id": result.chosen_slot_id,
         "suggested_appointment_types": result.suggested_appointment_types,
@@ -223,6 +232,15 @@ def choose_appointment_type(state: AgentState):
         return {
             "suggested_providers": None,
             "chosen_provider_id": None,
+            "suggested_slots": None,
+            "chosen_slot_id": None,
+            "suggested_appointment_types": None,
+            "chosen_appointment_type": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
+    if result.action == "change_slot":
+        return {
             "suggested_slots": None,
             "chosen_slot_id": None,
             "suggested_appointment_types": None,
@@ -292,11 +310,18 @@ async def confirm_booking(state: AgentState, config):
             "messages": state["messages"] + [AIMessage(content=result.message)],
         }
 
-    else:
+    elif result.action == "change_slot":
         return {
             "suggested_slots": None,
             "chosen_slot_id": None,
             "suggested_appointment_types": None,
+            "chosen_appointment_type": None,
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
+    else:  # change_appointment_type
+        return {
+            "suggested_appointment_types": state["suggested_appointment_types"],
             "chosen_appointment_type": None,
             "messages": state["messages"] + [AIMessage(content=result.message)],
         }

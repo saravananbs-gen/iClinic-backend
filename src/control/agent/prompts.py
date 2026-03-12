@@ -70,13 +70,14 @@ CHOOSE_SLOT_AND_SUGGEST_TYPES_SYSTEM_PROMPT = """
 
     Rules:
     - If the user wants to change the provider or doctor → action = change_provider, set chosen_slot_id = null, suggested_appointment_types = null, ask for symptoms to suggest a new provider.
+    - If the user wants to change or re-select the slot or time → action = change_slot, set chosen_slot_id = null, suggested_appointment_types = null, ask for their preferred time or day again.
     - Otherwise → action = proceed, identify the slot by day, time, or number, confirm it, list all appointment types and ask the user to pick one.
 
     Return structured output with:
-    - action: "proceed" or "change_provider"
-    - chosen_slot_id: the slot_id of the chosen slot, or null if change_provider
-    - suggested_appointment_types: full list of appointment type objects, or null if change_provider
-    - message: confirm slot + ask for appointment type (proceed) or ask for symptoms (change_provider)
+    - action: "proceed", "change_provider", or "change_slot"
+    - chosen_slot_id: the slot_id of the chosen slot, or null if change_provider or change_slot
+    - suggested_appointment_types: full list of appointment type objects, or null if change_provider or change_slot
+    - message: confirm slot + ask for appointment type (proceed), ask for symptoms (change_provider), or ask for preferred time/day (change_slot)
 """
 
 CHOOSE_APPOINTMENT_TYPE_SYSTEM_PROMPT = """
@@ -93,12 +94,13 @@ CHOOSE_APPOINTMENT_TYPE_SYSTEM_PROMPT = """
 
     Rules:
     - If the user wants to change the provider or doctor → action = change_provider, set chosen_appointment_type = null, ask for symptoms to suggest a new provider.
+    - If the user wants to change or re-select the slot or time → action = change_slot, set chosen_appointment_type = null, ask for their preferred time or day again.
     - Otherwise → action = proceed, identify the appointment type by name or number, return its name, and show a full booking summary asking the user to confirm.
 
     Return structured output with:
-    - action: "proceed" or "change_provider"
-    - chosen_appointment_type: the name of the chosen type, or null if change_provider
-    - message: full booking summary asking to confirm (proceed) or ask for symptoms (change_provider)
+    - action: "proceed", "change_provider", or "change_slot"
+    - chosen_appointment_type: the name of the chosen type, or null if change_provider or change_slot
+    - message: full booking summary asking to confirm (proceed), ask for symptoms (change_provider), or ask for preferred time/day (change_slot)
 """
 
 CONFIRM_BOOKING_SYSTEM_PROMPT = """
@@ -115,13 +117,15 @@ CONFIRM_BOOKING_SYSTEM_PROMPT = """
     - If the user confirms or agrees to proceed → action = confirm
     - If the user wants to change the provider or doctor → action = change_provider
     - If the user wants to change the slot, time, or day → action = change_slot
+    - If the user wants to change the appointment type → action = change_appointment_type
 
     Return structured output with:
-    - action: one of "confirm", "change_provider", "change_slot"
+    - action: one of "confirm", "change_provider", "change_slot", "change_appointment_type"
     - message:
         confirm → a success confirmation message
         change_provider → acknowledge and ask for their symptoms again to find a new provider
         change_slot → acknowledge and ask for their preferred time or day again
+        change_appointment_type → acknowledge and ask them to choose a different appointment type
 """
 
 SUGGEST_SLOTS_SYSTEM_PROMPT = """
