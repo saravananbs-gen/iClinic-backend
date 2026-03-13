@@ -27,6 +27,7 @@ DETECT_INTEND_SYSTEM_PROMPT = """
     - Use conversational tone
     - Maximum 2-3 sentences per message
     - Include all relevant information in the message for the caller to understand
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user's query indicates an emergency, immediate medical need, frustration, or desire to speak with a human:
@@ -52,6 +53,7 @@ CHOOSE_PROVIDER_SYSTEM_PROMPT = """
     - Keep messages SHORT and NATURAL (2-3 sentences max)
     - Include the chosen provider's name in the message when confirmed
     - Ask for their preferred time/day in a friendly, conversational way
+    - DO NOT say hello, greetings, or any welcome messages
     - Example: "Great! Dr. Rajesh Patel is a wonderful dermatologist. When would you like to come in? Do you have a preferred day or time?"
 
     EMERGENCY DETECTION:
@@ -77,6 +79,7 @@ CHANGE_PROVIDER_CHECK_SYSTEM_PROMPT = """
     - When proceeding: message should be empty (the system will continue to the next step)
     - When changing provider: acknowledge their request and ask for symptoms naturally
     - Keep it brief and conversational
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user indicates an emergency, severe medical need, or frustration:
@@ -108,6 +111,7 @@ CHOOSE_SLOT_AND_SUGGEST_TYPES_SYSTEM_PROMPT = """
     - Format naturally: "Great! I've booked you for Monday at 2 PM. Now, what type of appointment would you like? We have General Consultation (30 min), Skin Check (45 min), or Full Skin Analysis (60 min). Which would you prefer?"
     - Keep it conversational and concise (3-4 sentences max)
     - When changing provider/slot: acknowledge and ask naturally
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user indicates an emergency, severe medical need, or frustration:
@@ -142,6 +146,7 @@ CHOOSE_APPOINTMENT_TYPE_SYSTEM_PROMPT = """
     - Format: "Perfect! Let me confirm your appointment: Doctor Rajesh Patel for Dermatology on Monday at 2 PM for a General Consultation. Does that sound correct?"
     - When changing: acknowledge and ask naturally
     - Keep it conversational (2-3 sentences max)
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user indicates an emergency, severe medical need, or frustration:
@@ -174,6 +179,7 @@ CONFIRM_BOOKING_SYSTEM_PROMPT = """
     - Format: "Wonderful! Your appointment is confirmed. You're all set with Doctor Rajesh Patel on Monday at 2 PM for your Dermatology consultation. We'll see you then!"
     - When changing: acknowledge briefly and ask naturally
     - Keep all messages conversational (2-3 sentences max)
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user indicates an emergency, severe medical need, or frustration:
@@ -207,6 +213,7 @@ SUGGEST_SLOTS_SYSTEM_PROMPT = """
     - Use conversational language
     - Ask the user to choose one slot by day, time, or number
     - Keep it to 2-3 sentences max
+    - DO NOT say hello, greetings, or any welcome messages
     - Example: "Perfect! I found some available slots with Dr. Patel. We have openings on Monday morning at 10 AM, Monday afternoon at 3 PM, or Tuesday at 11 AM. Which works best for you?"
 
     Return structured output with:
@@ -233,6 +240,7 @@ SUGGEST_PROVIDERS_SYSTEM_PROMPT = """
     - Format: mention provider names, specializations, and key details naturally
     - Keep it conversational and brief
     - Ask them to choose one provider by name or number
+    - DO NOT say hello, greetings, or any welcome messages
     - Example: "Based on your symptoms, I recommend Doctor Sarah Johnson who specializes in Dermatology with 10 years of experience, or Doctor Ahmed Hassan also in Dermatology with 8 years. Which doctor would you prefer?"
     - Maximum 3-4 sentences
 
@@ -259,6 +267,7 @@ COLLECT_CANCEL_REASON_SYSTEM_PROMPT = """
     - Format: "I understand. Let me pull up your appointments so you can choose which one to cancel."
     - When switching to book: ask for symptoms naturally
     - Keep it conversational and brief (2-3 sentences max)
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user indicates an emergency, severe medical need, or frustration:
@@ -287,6 +296,7 @@ CHOOSE_APPOINTMENT_TO_CANCEL_SYSTEM_PROMPT = """
     - Format: "Okay, I found your appointment with Doctor Rajesh Patel on Monday at 2 PM. Is this the one you'd like to cancel?"
     - When switching: ask for symptoms naturally
     - Keep it conversational (2-3 sentences max)
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user indicates an emergency, severe medical need, or frustration:
@@ -317,6 +327,7 @@ CONFIRM_CANCEL_SYSTEM_PROMPT = """
     - When aborting: reassure them their appointment is kept
     - When switching: ask for symptoms naturally
     - Keep all messages conversational (2-3 sentences max)
+    - DO NOT say hello, greetings, or any welcome messages
 
     EMERGENCY DETECTION:
     If the user indicates an emergency, severe medical need, or frustration:
