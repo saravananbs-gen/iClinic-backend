@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from src.config.settings import settings
@@ -39,10 +39,9 @@ from src.control.agent.tools import (
 )
 
 
-llm = ChatOpenAI(
-    model=settings.LLM_DEPLOYMENT_NAME,
-    api_key=settings.AZURE_FOUNDRY_KEY,
-    base_url=settings.AZURE_FOUNDRY_ENDPOINT,
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    api_key=settings.GROQ_API_KEY,
     temperature=0.2,
 )
 
@@ -74,15 +73,21 @@ def _format_appointments_for_cancel_message(appointments: list[dict]) -> str:
     return "\n".join(appointment_lines)
 
 
-def detect_intent(state: AgentState):
+async def detect_intent(state: AgentState):
     user_message = state["messages"][-1]
     system_prompt = DETECT_INTEND_SYSTEM_PROMPT
-    result = structured_llm.invoke(
+    result = await structured_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
     return {
         "intent": result.intent,
         "messages": state["messages"] + [AIMessage(content=result.message)],
@@ -93,19 +98,25 @@ async def suggest_providers(state: AgentState, config):
     user_message = state["messages"][-1]
     providers_json = await find_providers.ainvoke({}, config)
     system_prompt = SUGGEST_PROVIDERS_SYSTEM_PROMPT.format(providers=providers_json)
-    result = suggest_providers_llm.invoke(
+    result = await suggest_providers_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
     return {
         "suggested_providers": result.suggested_providers,
         "messages": state["messages"] + [AIMessage(content=result.message)],
     }
 
 
-def choose_provider(state: AgentState):
+async def choose_provider(state: AgentState):
     user_message = state["messages"][-1]
     suggested = state["suggested_providers"]
     providers_info = [
@@ -113,12 +124,17 @@ def choose_provider(state: AgentState):
         for p in suggested
     ]
     system_prompt = CHOOSE_PROVIDER_SYSTEM_PROMPT.format(providers=providers_info)
-    result = choose_provider_llm.invoke(
+    result = await choose_provider_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     if result.action == "new_symptoms":
         return {
@@ -135,12 +151,17 @@ def choose_provider(state: AgentState):
 async def suggest_slots(state: AgentState, config):
     user_message = state["messages"][-1]
 
-    check_result = change_provider_check_llm.invoke(
+    check_result = await change_provider_check_llm.ainvoke(
         [
             SystemMessage(content=CHANGE_PROVIDER_CHECK_SYSTEM_PROMPT),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if check_result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=check_result.message)],
+        }
 
     if check_result.action == "change_provider":
         return {
@@ -161,12 +182,18 @@ async def suggest_slots(state: AgentState, config):
         config,
     )
     system_prompt = SUGGEST_SLOTS_SYSTEM_PROMPT.format(slots=slots_json)
-    result = suggest_slots_llm.invoke(
+    result = await suggest_slots_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
+
     return {
         "suggested_slots": result.suggested_slots,
         "messages": state["messages"] + [AIMessage(content=result.message)],
@@ -183,12 +210,17 @@ async def choose_slot_and_suggest_types(state: AgentState, config):
         slots=slots_info,
         appointment_types=appointment_types_json,
     )
-    result = choose_slot_and_suggest_types_llm.invoke(
+    result = await choose_slot_and_suggest_types_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     if result.action == "change_provider":
         return {
@@ -217,7 +249,7 @@ async def choose_slot_and_suggest_types(state: AgentState, config):
     }
 
 
-def choose_appointment_type(state: AgentState):
+async def choose_appointment_type(state: AgentState):
 
     user_message = state["messages"][-1]
 
@@ -245,12 +277,17 @@ def choose_appointment_type(state: AgentState):
         slot_time=chosen_slot.time,
     )
 
-    result = choose_appointment_type_llm.invoke(
+    result = await choose_appointment_type_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     if result.action == "change_provider":
         return {
@@ -302,12 +339,17 @@ async def confirm_booking(state: AgentState, config):
         appointment_type=state["chosen_appointment_type"],
     )
 
-    result = confirm_booking_llm.invoke(
+    result = await confirm_booking_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     if result.action == "confirm":
         await create_appointment.ainvoke(
@@ -355,12 +397,17 @@ async def collect_cancel_reason(state: AgentState, config):
 
     user_message = state["messages"][-1]
 
-    result = collect_cancel_reason_llm.invoke(
+    result = await collect_cancel_reason_llm.ainvoke(
         [
             SystemMessage(content=COLLECT_CANCEL_REASON_SYSTEM_PROMPT),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     if result.action == "switch_to_book":
         return {
@@ -443,7 +490,7 @@ async def list_appointments_to_cancel(state: AgentState, config):
         appointments=appointments_info
     )
 
-    result = choose_appointment_to_cancel_llm.invoke(
+    result = await choose_appointment_to_cancel_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(
@@ -458,7 +505,7 @@ async def list_appointments_to_cancel(state: AgentState, config):
     }
 
 
-def choose_appointment_to_cancel(state: AgentState):
+async def choose_appointment_to_cancel(state: AgentState):
 
     user_message = state["messages"][-1]
 
@@ -477,12 +524,17 @@ def choose_appointment_to_cancel(state: AgentState):
         appointments=appointments_info
     )
 
-    result = choose_appointment_to_cancel_llm.invoke(
+    result = await choose_appointment_to_cancel_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     if result.action == "switch_to_book":
         return {
@@ -518,7 +570,7 @@ async def confirm_cancel(state: AgentState, config):
         f"Date: {chosen['date']} at {chosen['time']}"
     )
 
-    result = confirm_cancel_llm.invoke(
+    result = await confirm_cancel_llm.ainvoke(
         [
             SystemMessage(
                 content=CONFIRM_CANCEL_SYSTEM_PROMPT.format(
@@ -528,6 +580,11 @@ async def confirm_cancel(state: AgentState, config):
             HumanMessage(content=user_message.content),
         ]
     )
+
+    if result.message == "<TRANSFER_TO_HUMAN>":
+        return {
+            "messages": state["messages"] + [AIMessage(content=result.message)],
+        }
 
     if result.action == "confirm":
         await cancel_appointment_by_id.ainvoke(
