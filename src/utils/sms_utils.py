@@ -10,4 +10,5 @@ client = Client(ACCOUNT_SID, AUTH_TOKEN)
 
 
 async def send_sms(to_phone: str, message: str):
+    return
     client.messages.create(body=message, from_=TWILIO_PHONE, to=to_phone)
